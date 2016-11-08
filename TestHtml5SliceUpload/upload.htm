@@ -1,0 +1,88 @@
+﻿<!DOCTYPE html />
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <title></title>
+    <script src="jquery.min.js" type="text/javascript"></script>
+    <style type="text/css">
+    *
+    {
+        margin:0px auto;
+        padding:0px;
+    }
+    body
+    {
+        width:100%;
+    }
+    #log
+    {
+        background-color:#000;
+        color:#FFF;
+        font-size:12px;
+        margin-bottom:10px;
+        padding:10px;
+    }
+    </style>
+    <script type="text/javascript">
+
+        function log(text) {
+            $('#log').append('<div class="log">'+text+'</div>');
+        }
+
+        $(function () {
+            log('就绪');
+            $('#btnUpload').click(function () {
+                log('开始上传...');
+                var file = $("#file")[0].files[0];
+                var shardSize = 1024 * 1024; // 默认按 1M 分片
+                var size = file.size;
+                if (size <= (5 * 1024 * 1024)) {
+                    // 小于 5M
+                    shardSize = 100000; // 按照 100000个字节分片
+                } else if (size > (5 * 1024 * 1024) && size <= (20 * 1024 * 1024)) {
+                    // 大于 5M 小于 20M
+                    shardSize = 500000; // 按照 500000个字节分片
+                }
+                shardCount = Math.ceil(file.size / shardSize);
+                for (var i = 0; i < shardCount; ++i) {
+                    var start = i * shardSize;
+                    var end = Math.min(file.size, start + shardSize);
+                    var form = new FormData();
+                    var index = i + 1;
+                    form.append("data", file.slice(start, end));
+                    form.append("name", file.name);
+                    form.append("total", shardCount);
+                    form.append("size", file.size);
+                    form.append("index", index);
+                    log('<div id="slice_' + (index) + '">开始上传第' + index + '/' + shardCount + '个切片</div>');
+                    $.ajax({
+                        url: "upload.ashx",
+                        type: "POST",
+                        data: form,
+                        async: true,
+                        processData: false,
+                        contentType: false,
+                        success: function (rs) {
+                            $('#slice_' + rs.index).html('<div style="color:#05A200;">第' + rs.index + '个分片上传完成</div>');
+                            if (rs.complete == 1) {
+                                log('上传队列完成！');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div id="log"></div>
+        <div class="col-lg-12">
+            <input id="file" type="file" name="file" />
+            <input type="button" id="btnUpload" value="上传" />
+        </div>
+    </div>
+</body>
+</html>
